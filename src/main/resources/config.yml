@@ -1,0 +1,97 @@
+env:
+  workDir: data
+steps:
+  - step: journal
+    source:
+      - path/to/input.csv
+    target: path/to/output.csv
+    config:
+      prepare:
+      - name: select
+        columns:
+          - 1
+          - 2
+          - 3
+          - 4
+      - name: map
+        from: 3
+        action: replace
+        enum:
+          - from: 0
+            to: 1
+          - from: 1
+            to: -1
+      - name: expression
+        to: 4
+        expression: "#{@4 * @3}"
+      - name: groupBySum
+        groupBy:
+          - 1
+          - 2
+        sum:
+          - 4
+      - name: select
+        columns:
+          - 1
+          - 2
+          - 4
+
+  - step: balance
+    source:
+      - path/to/input.csv
+    target: path/to/output.csv
+    config:
+      prepare:
+      - name: select
+        columns:
+          - 1
+          - 2
+          - 3
+      - name: groupBySum
+        groupBy:
+          - 1
+          - 2
+        sum:
+          - 3
+
+  - step: last
+    source:
+      - path/to/input.csv
+    target: path/to/output.csv
+    config:
+      prepare:
+      - name: select
+        columns:
+          - 1
+          - 2
+          - 3
+      - name: groupBySum
+        groupBy:
+          - 1
+          - 2
+        sum:
+          - 3
+
+  - step: join
+    source:
+      - path/to/input.csv
+      - path/to/input.csv
+      - path/to/input.csv
+    target: path/to/output.csv
+    config:
+      key:
+        - 1
+        - 2
+
+  - step: verify
+    source:
+      - path/to/input.csv
+    target: path/to/output.csv
+    config:
+      rule:
+        - op: eq
+        - left: "#{@5}"
+        - right: "#{@3+@4}"
+      key:
+        - 1
+        - 2
