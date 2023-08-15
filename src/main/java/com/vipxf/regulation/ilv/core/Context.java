@@ -12,8 +12,8 @@ public class Context {
         zipFilePath = path;
     }
 
-    public String get(String var) {
-        return "";
+    public String get(String varName) {
+        return vars.get(varName);
     }
 
     public String source() {

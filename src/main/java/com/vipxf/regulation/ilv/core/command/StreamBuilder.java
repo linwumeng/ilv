@@ -1,17 +1,23 @@
 package com.vipxf.regulation.ilv.core.command;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class StreamBuilder {
-    public Stream<String> buildStream(Stream<String> inputStream, List<Map<String, Object>> operations) {
 
+    public static final String FIELD_DELIMITOR = "\\|";
+
+    public Stream<String> buildStream(Stream<String> inputStream, List<Map<String, Object>> operations) {
         // 构建操作链并应用于输入流
         Stream<String> outputStream = inputStream;
         for (Map<String, Object> operation : operations) {
@@ -19,12 +25,12 @@ public class StreamBuilder {
             switch (operationName) {
                 case "select":
                     List<Integer> selectColumns = (List<Integer>) operation.get("columns");
-                    outputStream = outputStream.map(line -> {
-                        String[] fields = line.split(",");
+                    outputStream = outputStream.filter(line -> StringUtils.hasLength(line)).map(line -> {
+                        String[] fields = line.split(FIELD_DELIMITOR);
                         List<String> selectedFields = selectColumns.stream()
-                                .map(index -> fields[index])
+                                .map(index -> fields[index - 1])
                                 .collect(Collectors.toList());
-                        return String.join(",", selectedFields);
+                        return String.join("|", selectedFields);
                     });
                     break;
                 case "map":
@@ -32,46 +38,47 @@ public class StreamBuilder {
                     String action = (String) operation.get("action");
                     List<Map<String, Object>> enumMappings = (List<Map<String, Object>>) operation.get("enum");
                     outputStream = outputStream.map(line -> {
-                        String[] fields = line.split(",");
-                        String value = fields[mapFromColumn];
+                        String[] fields = line.split(FIELD_DELIMITOR);
+                        String value = fields[mapFromColumn - 1];
                         String mappedValue = mapEnumValue(value, enumMappings);
                         if ("replace".equalsIgnoreCase(action)) {
-                            fields[mapFromColumn] = mappedValue;
+                            fields[mapFromColumn - 1] = mappedValue;
                         } else {
-                            fields = addElement(fields, mappedValue);
+                            fields = append(fields, mappedValue);
                         }
 
-                        return String.join(",", fields);
+                        return String.join("|", fields);
                     });
                     break;
                 case "expression":
                     int expressionToColumn = (int) operation.get("to");
                     String expression = (String) operation.get("expression");
+                    String elExpr = elExpr(expression);
                     outputStream = outputStream.map(line -> {
-                        String[] fields = line.split(",");
-                        double result = evaluateExpression(expression, fields);
-                        fields[expressionToColumn] = String.valueOf(result);
-                        return String.join(",", fields);
+                        String[] fields = line.split(FIELD_DELIMITOR);
+                        double result = evaluateExpression(elExpr, fields);
+                        fields[expressionToColumn - 1] = String.valueOf(result);
+                        return String.join("|", fields);
                     });
                     break;
                 case "groupBySum":
                     List<Integer> groupByColumns = (List<Integer>) operation.get("groupBy");
                     List<Integer> sumColumns = (List<Integer>) operation.get("sum");
                     outputStream = outputStream.collect(Collectors.groupingBy(line -> {
-                        String[] fields = line.split(",");
+                        String[] fields = line.split(FIELD_DELIMITOR);
                         List<String> groupByValues = groupByColumns.stream()
-                                .map(index -> fields[index])
+                                .map(index -> fields[index - 1])
                                 .collect(Collectors.toList());
-                        return String.join(",", groupByValues);
+                        return String.join("|", groupByValues);
                     })).values().stream().map(group -> {
-                        String[] firstLineFields = group.get(0).split(",");
+                        String[] firstLineFields = group.get(0).split(FIELD_DELIMITOR);
                         for (int sumColumn : sumColumns) {
                             double sum = group.stream()
-                                    .mapToDouble(line -> Double.parseDouble(line.split(",")[sumColumn]))
+                                    .mapToDouble(line -> Double.parseDouble(line.split(FIELD_DELIMITOR)[sumColumn - 1]))
                                     .sum();
-                            firstLineFields[sumColumn] = String.valueOf(sum);
+                            firstLineFields[sumColumn - 1] = String.valueOf(sum);
                         }
-                        return String.join(",", firstLineFields);
+                        return String.join("|", firstLineFields);
                     });
                     break;
                 default:
@@ -82,7 +89,7 @@ public class StreamBuilder {
         return outputStream;
     }
 
-    public static String[] addElement(String[] originalArray, String newElement) {
+    private static String[] append(String[] originalArray, String newElement) {
         int currentLength = originalArray.length;
         String[] newArray = new String[currentLength + 1];
         System.arraycopy(originalArray, 0, newArray, 0, currentLength);
@@ -101,15 +108,28 @@ public class StreamBuilder {
         return "0";
     }
 
+    @Data
+    @AllArgsConstructor
+    public static class RootObject {
+        private String[] array;
+    }
+
     private double evaluateExpression(String expression, String[] fields) {
         SpelExpressionParser parser = new SpelExpressionParser();
         Expression exp = parser.parseExpression(expression);
-        StandardEvaluationContext evaluationContext = new StandardEvaluationContext();
 
-        for (int i = 0; i < fields.length; i++) {
-            evaluationContext.setVariable(String.valueOf(i), fields[i]);
+        return exp.getValue(new RootObject(fields), Double.class);
+    }
+
+    private String elExpr(String customExpression) {
+        Pattern pattern = Pattern.compile("@(\\d+)");
+        Matcher matcher = pattern.matcher(customExpression);
+        StringBuffer sb = new StringBuffer();
+
+        while (matcher.find()) {
+            matcher.appendReplacement(sb, "T(Double).parseDouble(array[" + (Integer.parseInt(matcher.group(1)) - 1) + "])");
         }
-
-        return exp.getValue(evaluationContext, Double.class);
+        matcher.appendTail(sb);
+        return sb.toString();
     }
 }
