@@ -1,5 +1,9 @@
 package com.vipxf.regulation.ilv.core.command;
 
+import org.springframework.expression.Expression;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,8 +34,13 @@ public class StreamBuilder {
                     outputStream = outputStream.map(line -> {
                         String[] fields = line.split(",");
                         String value = fields[mapFromColumn];
-                        String mappedValue = mapValue(value, action, enumMappings);
-                        fields[mapFromColumn] = mappedValue;
+                        String mappedValue = mapEnumValue(value, enumMappings);
+                        if ("replace".equalsIgnoreCase(action)) {
+                            fields[mapFromColumn] = mappedValue;
+                        } else {
+                            fields = addElement(fields, mappedValue);
+                        }
+
                         return String.join(",", fields);
                     });
                     break;
@@ -73,31 +82,34 @@ public class StreamBuilder {
         return outputStream;
     }
 
-    private String mapValue(String value, String action, List<Map<String, Object>> enumMappings) {
+    public static String[] addElement(String[] originalArray, String newElement) {
+        int currentLength = originalArray.length;
+        String[] newArray = new String[currentLength + 1];
+        System.arraycopy(originalArray, 0, newArray, 0, currentLength);
+        newArray[currentLength] = newElement;
+        return newArray;
+    }
+
+    private String mapEnumValue(String value, List<Map<String, Object>> enumMappings) {
         for (Map<String, Object> mapping : enumMappings) {
             String from = String.valueOf(mapping.get("from"));
             String to = String.valueOf(mapping.get("to"));
-            if (action.equals("replace") && value.equals(from)) {
+            if (value.equals(from)) {
                 return to;
-            } else if (action.equals("append") && value.contains(from)) {
-                return value + to;
             }
         }
-        return value;
+        return "0";
     }
 
     private double evaluateExpression(String expression, String[] fields) {
-//            this.parser = new SpelExpressionParser();
-//            this.expression = parser.parseExpression(expression);
-//            this.evaluationContext = new StandardEvaluationContext();
-//
-//            evaluationContext.setVariable("0", item.getColumn(0));
-//            evaluationContext.setVariable("1", item.getColumn(1));
-//            evaluationContext.setVariable("2", item.getColumn(2));
-//
-//            YourOutputObject output = new YourOutputObject();
-//            output.setColumn(3, expression.getValue(evaluationContext, Integer.class));
-//            return output;
-        return 0;
+        SpelExpressionParser parser = new SpelExpressionParser();
+        Expression exp = parser.parseExpression(expression);
+        StandardEvaluationContext evaluationContext = new StandardEvaluationContext();
+
+        for (int i = 0; i < fields.length; i++) {
+            evaluationContext.setVariable(String.valueOf(i), fields[i]);
+        }
+
+        return exp.getValue(evaluationContext, Double.class);
     }
 }

@@ -16,9 +16,8 @@ public class YamlProcessor {
         this.commandFactory = new CommandFactory();
     }
 
-    public void proc(String yamlFile) {
+    public void proc(Context context, String yamlFile) {
         YamlConfig config = load(yamlFile);
-        Context context = createContext(config.workDir());
         List<Command> commands = commandFactory.createCommands(config.getSteps());
         for (Command command : commands) {
             command.execute(context);
@@ -31,13 +30,6 @@ public class YamlProcessor {
                 .getClassLoader()
                 .getResourceAsStream("config.yml");
         return yaml.load(inputStream);
-    }
-
-    private Context createContext(String csvFile) {
-        // Create a context object with methods to access and manipulate the csv data
-        // Implement this according to your requirements
-
-        return null;
     }
 }
 

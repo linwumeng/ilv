@@ -1,5 +1,6 @@
 package com.vipxf.regulation.ilv;
 
+import com.vipxf.regulation.ilv.core.Context;
 import com.vipxf.regulation.ilv.core.YamlProcessor;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -11,6 +12,8 @@ public class IlvApplication {
         SpringApplication.run(IlvApplication.class, args);
 
         YamlProcessor p = new YamlProcessor();
-        p.proc("config.yml");
+        Context context = new Context("path to zip");
+        context.put("journal.source.JJFSE", "JJFSE");
+        p.proc(context, "config.yml");
     }
 }

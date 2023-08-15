@@ -3,8 +3,8 @@ env:
 steps:
   - step: journal
     source:
-      - path/to/input.csv
-    target: path/to/output.csv
+      - $JJFSE
+    target: C:/data/JJFSE.csv
     config:
       prepare:
       - name: select
