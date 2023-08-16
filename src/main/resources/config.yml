@@ -1,80 +1,79 @@
-env:
-  workDir: data
 steps:
-  - step: journal
-    source: $JJFSE
-    target: C:/data/desktop/JJFSE.csv
-    config:
-      prepare:
-      - name: select
-        columns:
-          - 2
-          - 9
-          - 16
-          - 21
-      - name: map
-        from: 4
-        action: replace
-        enum:
-          - from: 0
-            to: -1
-          - from: 1
-            to: 1
-      - name: expression
-        to: 3
-        expression: "@3 * @4"
-      - name: groupBySum
-        groupBy:
-          - 2
-        sum:
-          - 3
-      - name: select
-        columns:
-          - 2
-          - 3
-          - 4
+#  - step: journal
+#    type: file
+#    source: $JJFSE
+#    target: $JJFSE
+#    config:
+#      prepare:
+#      - name: select
+#        columns:
+#          - 2
+#          - 9
+#          - 16
+#          - 21
+#      - name: map
+#        from: 4
+#        action: replace
+#        enum:
+#          - from: 0
+#            to: -1
+#          - from: 1
+#            to: 1
+#      - name: expression
+#        to: 3
+#        expression: "@3 * @4"
+#      - name: groupBySum
+#        groupBy:
+#          - 2
+#        sum:
+#          - 3
+#      - name: select
+#        columns:
+#          - 2
+#          - 3
+#          - 4
 
-#  - step: balance
-#    source: path/to/input.csv
-#    target: path/to/output.csv
+#  - step: cbf
+#    type: file
+#    source: $KHYE
+#    target: $KHYE
 #    config:
 #      prepare:
 #      - name: select
 #        columns:
-#          - 1
 #          - 2
-#          - 3
-#      - name: groupBySum
-#        groupBy:
-#          - 1
-#          - 2
-#        sum:
-#          - 3
+#          - 9
+#          - 16
 #
-#  - step: last
-#    source: path/to/input.csv
-#    target: path/to/output.csv
+#  - step: lbf
+#    type: file
+#    source: $KHYE
+#    target: $KHYE
 #    config:
 #      prepare:
 #      - name: select
 #        columns:
-#          - 1
 #          - 2
-#          - 3
-#      - name: groupBySum
-#        groupBy:
-#          - 1
-#          - 2
-#        sum:
-#          - 3
+#          - 9
+#          - 16
 #
-#  - step: join
-#    source: path/to/input.csv,path/to/input.csv,path/to/input.csv
-#    target: path/to/output.csv
-#    config:
-#      key:
-#        - 1
-#        - 2
+  - step: join
+    type: join
+    target: $BALANCE
+    config:
+      source:
+        - lbf:
+            - 3
+            - 1
+            - 2
+        - journal:
+            - 3
+            - 1
+            - 2
+        - cbf:
+            - 3
+            - 1
+            - 2
 #
 #  - step: verify
 #    source: path/to/input.csv
