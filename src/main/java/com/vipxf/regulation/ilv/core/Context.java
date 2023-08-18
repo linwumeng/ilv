@@ -32,4 +32,13 @@ public class Context {
     public void put(String key, String value) {
         vars.put(key, value);
     }
+
+    public String resolveFile(String key) {
+        for (Map.Entry<String, String> e : vars.entrySet()) {
+            if (e.getKey().contains(key)) {
+                return workDir + "/" + e.getValue();
+            }
+        }
+        return null;
+    }
 }

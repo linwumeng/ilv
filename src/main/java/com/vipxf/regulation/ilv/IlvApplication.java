@@ -12,7 +12,7 @@ public class IlvApplication {
         SpringApplication.run(IlvApplication.class, args);
 
         YamlProcessor p = new YamlProcessor();
-        Context context = new Context("c:/data/desktop", "LOABD7002851000012202306s.zip");
+        Context context = new Context("c:/data/desktop", "LOAFD7002851000012202306s.zip");
         context.put("journal.source.JJFSE", "LOAFD7002851000012202306s.dat");
         context.put("journal.target.JJFSE", "JJFSE.csv");
         context.put("cbf.source.KHYE", "LOABD7002851000012202305s.dat");
