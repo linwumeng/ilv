@@ -38,9 +38,10 @@ public class FileProcessor {
                         position += batch;
                         csvStream = reader.lines().limit(batch);
                     }
+                    zipIn.closeEntry();
+                    break;
                 }
-                zipIn.closeEntry();
-                break;
+                entry = zipIn.getNextEntry();
             }
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);

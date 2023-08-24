@@ -22,16 +22,25 @@ steps:
 #      - name: expression
 #        to: 3
 #        expression: "@3 * @4"
-#      - name: groupBySum
-#        groupBy:
+#      - name: shuffle
+#        by:
 #          - 2
-#        sum:
-#          - 3
-#      - name: select
-#        columns:
-#          - 2
-#          - 3
-#          - 4
+  - step: reduce
+    type: file
+    source:
+    target:
+    config:
+      prepare:
+      - name: groupBySum
+        groupBy:
+          - 2
+        sum:
+          - 3
+      - name: select
+        columns:
+          - 1
+          - 2
+          - 3
 
 #  - step: cbf
 #    type: file
@@ -57,23 +66,23 @@ steps:
 #          - 9
 #          - 16
 #
-  - step: join
-    type: join
-    target: $BALANCE
-    config:
-      source:
-        - lbf:
-            - 3
-            - 1
-            - 2
-        - journal:
-            - 3
-            - 1
-            - 2
-        - cbf:
-            - 3
-            - 1
-            - 2
+#  - step: join
+#    type: join
+#    target: $BALANCE
+#    config:
+#      source:
+#        - lbf:
+#            - 3
+#            - 1
+#            - 2
+#        - journal:
+#            - 3
+#            - 1
+#            - 2
+#        - cbf:
+#            - 3
+#            - 1
+#            - 2
 #
 #  - step: verify
 #    source: path/to/input.csv
