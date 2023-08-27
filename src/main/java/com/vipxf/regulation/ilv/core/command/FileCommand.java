@@ -15,7 +15,7 @@ public class FileCommand implements Command {
 
     @Override
     public void execute(Context context) {
-        String zipFilePath = context.source(); // 替换为您的zip文件路径
+        String zipFilePath = context.source();
         String source = config.getSource(context);
 
         FileProcessor template = new FileProcessor(zipFilePath, source);

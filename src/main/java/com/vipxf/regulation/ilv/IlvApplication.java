@@ -14,7 +14,9 @@ public class IlvApplication {
         YamlProcessor p = new YamlProcessor();
         Context context = new Context("c:/data/desktop", "LOAFD7002851000012202306.zip");
         context.put("journal.source.JJFSE", "LOAFD7002851000012202306.dat");
-        context.put("journal.target.JJFSE", "JJFSE.csv");
+        context.put("journal.target.JJFSE", "JJFSEs.csv");
+        context.put("sum.source.JJFSE", "JJFSEs.csv");
+        context.put("sum.target.JJFSE", "JJFSE.csv");
         context.put("cbf.source.KHYE", "LOABD7002851000012202305.dat");
         context.put("cbf.target.KHYE", "KHYE5.csv");
         context.put("lbf.source.KHYE", "LOABD7002851000012202306.dat");

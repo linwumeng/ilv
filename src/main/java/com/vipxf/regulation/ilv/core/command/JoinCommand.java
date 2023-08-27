@@ -159,7 +159,8 @@ public class JoinCommand implements Command {
         String createTable = "CREATE TABLE IF NOT EXISTS " + table + " ("
                 + Strings.join(fields, ',')
                 + ","
-                + " PRIMARY KEY(" + Strings.join(keyFields, ',') + ")" + ")";
+                + " PRIMARY KEY(" + Strings.join(keyFields, ',') + ")"
+                + ")";
 
         return createTable;
     }

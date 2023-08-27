@@ -21,6 +21,7 @@ public class CommandFactory {
         switch (stepConfig.getType()) {
             case "file": return new FileCommand(stepConfig);
             case "join": return new JoinCommand(stepConfig);
+            case "reduce": return new ReduceCommand(stepConfig);
             default: break;
         }
         return null;
