@@ -27,15 +27,15 @@ steps:
 #          - 1
 #          - 2
 #          - 3
-  - step: sum
-    type: reduce
-    source: $JJFSE
-    target: $JJFSE
-    config:
-      groupBy:
-        - 2
-      sum:
-        - 3
+#  - step: sum
+#    type: reduce
+#    source: $JJFSE
+#    target: $JJFSE
+#    config:
+#      groupBy:
+#        - 2
+#      sum:
+#        - 3
 
 #  - step: cbf
 #    type: file
@@ -61,23 +61,23 @@ steps:
 #          - 9
 #          - 16
 #
-#  - step: join
-#    type: join
-#    target: $BALANCE
-#    config:
-#      source:
-#        - lbf:
-#            - 3
-#            - 1
-#            - 2
-#        - journal:
-#            - 3
-#            - 1
-#            - 2
-#        - cbf:
-#            - 3
-#            - 1
-#            - 2
+  - step: join
+    type: join
+    target: $BALANCE
+    config:
+      source:
+        - lbf:
+            - 3
+            - 1
+            - 2
+        - sum:
+            - 3
+            - 1
+            - 2
+        - cbf:
+            - 3
+            - 1
+            - 2
 #
 #  - step: verify
 #    source: path/to/input.csv

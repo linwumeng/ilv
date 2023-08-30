@@ -6,6 +6,7 @@ import org.springframework.expression.Expression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -56,29 +57,9 @@ public class StreamBuilder {
                     String elExpr = elExpr(expression);
                     outputStream = outputStream.map(line -> {
                         String[] fields = line.split(FIELD_DELIMITOR);
-                        double result = evaluateExpression(elExpr, fields);
+                        BigDecimal result = evaluateExpression(elExpr, fields);
                         fields[expressionToColumn - 1] = String.valueOf(result);
                         return String.join("|", fields);
-                    });
-                    break;
-                case "groupBySum":
-                    List<Integer> groupByColumns = (List<Integer>) operation.get("groupBy");
-                    List<Integer> sumColumns = (List<Integer>) operation.get("sum");
-                    outputStream = outputStream.collect(Collectors.groupingBy(line -> {
-                        String[] fields = line.split(FIELD_DELIMITOR);
-                        List<String> groupByValues = groupByColumns.stream()
-                                .map(index -> fields[index - 1])
-                                .collect(Collectors.toList());
-                        return String.join("|", groupByValues);
-                    })).values().stream().map(group -> {
-                        String[] firstLineFields = group.get(0).split(FIELD_DELIMITOR);
-                        for (int sumColumn : sumColumns) {
-                            double sum = group.stream()
-                                    .mapToDouble(line -> Double.parseDouble(line.split(FIELD_DELIMITOR)[sumColumn - 1]))
-                                    .sum();
-                            firstLineFields[sumColumn - 1] = String.valueOf(sum);
-                        }
-                        return String.join("|", firstLineFields);
                     });
                     break;
                 default:
@@ -114,11 +95,11 @@ public class StreamBuilder {
         private String[] array;
     }
 
-    private double evaluateExpression(String expression, String[] fields) {
+    private BigDecimal evaluateExpression(String expression, String[] fields) {
         SpelExpressionParser parser = new SpelExpressionParser();
         Expression exp = parser.parseExpression(expression);
 
-        return exp.getValue(new RootObject(fields), Double.class);
+        return exp.getValue(new RootObject(fields), BigDecimal.class);
     }
 
     private String elExpr(String customExpression) {
@@ -127,7 +108,7 @@ public class StreamBuilder {
         StringBuffer sb = new StringBuffer();
 
         while (matcher.find()) {
-            matcher.appendReplacement(sb, "T(Double).parseDouble(array[" + (Integer.parseInt(matcher.group(1)) - 1) + "])");
+            matcher.appendReplacement(sb, "new java.math.BigDecimal(array[" + (Integer.parseInt(matcher.group(1)) - 1) + "])");
         }
         matcher.appendTail(sb);
         return sb.toString();

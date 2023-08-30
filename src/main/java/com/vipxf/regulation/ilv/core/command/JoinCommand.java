@@ -5,6 +5,7 @@ import com.vipxf.regulation.ilv.core.StepConfig;
 import org.apache.logging.log4j.util.Strings;
 
 import java.io.*;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,40 +35,40 @@ public class JoinCommand implements Command {
             File sourceFile = new File(context.resolveFile(sourceKey));
             // Connect to the database
             Connection connection = DriverManager.getConnection("jdbc:sqlite:" + sourceFile.getParentFile().getCanonicalPath() + File.separator + "tmp.db");
-            // Disable auto-commit mode
-            connection.setAutoCommit(false);
 
             Statement statement = connection.createStatement();
             // Use PRAGMA to optimize SQLite
-//            statement.execute("PRAGMA synchronous=OFF");
-//            statement.execute("PRAGMA journal_mode=WAL");
-//            statement.close();
+            statement.execute("PRAGMA synchronous=OFF");
+            statement.execute("PRAGMA journal_mode=WAL");
+            statement.close();
+
+            // Disable auto-commit mode
+            connection.setAutoCommit(false);
 
             List<Map<String, Object>> sources = parseSource(context, source);
             for (Map<String, Object> s : sources) {
                 int totalColumns = Integer.parseInt(s.get("total").toString());
-                String table = s.get("table").toString();;
+                String table = s.get("table").toString();
 
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(context.resolveFile(s.get("key").toString()))))) {
-                    String createTable = createTableStatement(totalColumns, (List<Integer>) s.get("keys"), table);
+                    String createTable = createTableStatement(table, totalColumns, (List<Integer>) s.get("keys"));
 
                     statement = connection.createStatement();
                     statement.execute(createTable);
                     statement.close();
 
-                    executeBatch(connection, table, totalColumns, reader);
+                    executeBatch(connection, table, totalColumns, (List<Integer>) s.get("keys"), reader);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             }
 
-
             statement = connection.createStatement();
-            ResultSet rs = statement.executeQuery("SELECT * FROM KHYE5_csv as k5 full join JJFSE_csv as jj on k5.id1=jj.id1 and k5.id2=jj.id2 full join KHYE6_csv as k6 on jj.id1=k6.id1 and jj.id2=k6.id2");
-            int i=0;
+            ResultSet rs = statement.executeQuery("SELECT * FROM JJFSE_csv full join KHYE5_csv on KHYE5_csv.id1=JJFSE_csv.id1 and KHYE5_csv.id2=JJFSE_csv.id2 full join KHYE6_csv on JJFSE_csv.id1=KHYE6_csv.id1 and JJFSE_csv.id2=KHYE6_csv.id2 where JJFSE_csv.id1 is not null and JJFSE_csv.id2 is not null and KHYE5_csv.id1 is not null and KHYE5_csv.id2 is not null and (KHYE5_csv.field3 + JJFSE_csv.field3 != KHYE6_csv.field3)");
+            int i = 0;
             while (rs.next()) {
                 i++;
-                System.out.println(String.join(" ",rs.getString(1),rs.getString(2),rs.getString(3),rs.getString(5),rs.getString(6),rs.getString(7),rs.getString(8),rs.getString(9)));
+                System.out.println(String.join(" ", rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(7), rs.getString(8), rs.getString(9)));
             }
             System.out.println(i);
             rs.close();
@@ -76,11 +77,18 @@ public class JoinCommand implements Command {
             throw new RuntimeException(e);
         }
 
+    }
 
+    private static BigDecimal parseDecimal(String s) {
+        if (s == null || "null".equalsIgnoreCase(s)) {
+            return new BigDecimal(0);
+        }
+
+        return new BigDecimal(s);
     }
 
     private static List<Map<String, Object>> parseSource(Context context, List<Map<String, List<Integer>>> source) throws IOException {
-        List<Map<String,Object>> tables = new ArrayList<>(3);
+        List<Map<String, Object>> tables = new ArrayList<>(3);
         for (Map<String, List<Integer>> s : source) {
             String key = s.keySet().iterator().next() + ".target";
             int totalColumns = s.values().iterator().next().get(0);
@@ -91,10 +99,10 @@ public class JoinCommand implements Command {
                 keys.add(line);
             });
             Map<String, Object> map = new HashMap<>();
-            map.put("table",table);
+            map.put("table", table);
             map.put("total", totalColumns);
             map.put("keys", keys);
-            map.put("key",key);
+            map.put("key", key);
 
             tables.add(map);
         }
@@ -102,16 +110,20 @@ public class JoinCommand implements Command {
         return tables;
     }
 
-    private static void executeBatch(Connection connection, String table, int totalColumns, BufferedReader reader) throws SQLException {
+    private static void executeBatch(Connection connection, String table, int totalColumns, List<Integer> keys, BufferedReader reader) throws SQLException {
         String placeholder = createPlaceholder(totalColumns);
         // Use a PreparedStatement for batch inserts
         PreparedStatement pstmt = connection.prepareStatement("INSERT INTO " + table + " VALUES (" + placeholder + ")");
         for (int i = 0; i < 100000; i++) {
-            int k = i;
+            int k = i + 1;
             reader.lines().map(line -> line.split("\\|")).forEach(line -> {
                 try {
                     for (int j = 0; j < line.length; j++) {
-                        pstmt.setString(j + 1, line[j]);
+                        if (keys.contains(j + 1)) {
+                            pstmt.setString(j + 1, line[j]);
+                        } else {
+                            pstmt.setInt(j + 1, new BigDecimal(line[j]).multiply(new BigDecimal(100)).intValue());
+                        }
                     }
                     pstmt.addBatch();
                     if (k % 1000 == 0) {
@@ -153,7 +165,7 @@ public class JoinCommand implements Command {
         return placeholder;
     }
 
-    private static String createTableStatement(int totalCclumns, List<Integer> keys, String table) {
+    private static String createTableStatement(String table, int totalCclumns, List<Integer> keys) {
         List<String> keyFields = keys.stream().map(i -> String.format("id%d", i)).collect(Collectors.toList());
         List<String> fields = createFieldName(totalCclumns, keys);
         String createTable = "CREATE TABLE IF NOT EXISTS " + table + " ("
@@ -168,11 +180,11 @@ public class JoinCommand implements Command {
     private static List<String> createFieldName(int totalCclumns, List<Integer> keys) {
         List<String> fields = new ArrayList<>();
         for (int i = 0; i < totalCclumns; i++) {
-            String field = String.format("%d TEXT", i + 1);
+            String field = String.format("%d ", i + 1);
             if (keys.contains(i + 1)) {
-                field = "id" + field;
+                field = "id" + field + "TEXT";
             } else {
-                field = "field" + field;
+                field = "field" + field + "INT";
             }
 
             fields.add(field);
