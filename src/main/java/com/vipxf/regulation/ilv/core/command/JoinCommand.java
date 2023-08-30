@@ -6,6 +6,11 @@ import org.apache.logging.log4j.util.Strings;
 
 import java.io.*;
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,13 +33,16 @@ public class JoinCommand implements Command {
             // Load the SQLite JDBC driver
             Class.forName("org.sqlite.JDBC");
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e.getMessage(), e);
         }
-        try {
-            String sourceKey = source.iterator().next().keySet().iterator().next() + ".target";
-            File sourceFile = new File(context.resolveFile(sourceKey));
+
+        String sourceKey = source.iterator().next().keySet().iterator().next() + ".target";
+        File sourceFile = new File(context.resolveFile(sourceKey));
+        try(BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(config.getTarget(context), true)))) {
+            deleteIfExists(sourceFile);
+
             // Connect to the database
-            Connection connection = DriverManager.getConnection("jdbc:sqlite:" + sourceFile.getParentFile().getCanonicalPath() + File.separator + "tmp.db");
+            Connection connection = DriverManager.getConnection("jdbc:sqlite:" + getTempDbFile(sourceFile));
 
             Statement statement = connection.createStatement();
             // Use PRAGMA to optimize SQLite
@@ -68,15 +76,35 @@ public class JoinCommand implements Command {
             int i = 0;
             while (rs.next()) {
                 i++;
-                System.out.println(String.join(" ", rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(7), rs.getString(8), rs.getString(9)));
+                writer.append(String.join("|", rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(7), rs.getString(8), rs.getString(9)));
             }
-            System.out.println(i);
+            if (0 == i) {
+                deleteIfExists(sourceFile);
+            }
             rs.close();
             connection.close();
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            deleteIfExists(sourceFile);
         }
 
+    }
+
+    private boolean deleteIfExists(File sourceFile) {
+        try {
+            return Files.deleteIfExists(Paths.get(new URI("file://" + getTempDbFile(sourceFile))));
+        } catch (IOException|URISyntaxException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    private String getTempDbFile(File sourceFile) {
+        try {
+            return sourceFile.getParentFile().getCanonicalPath() + File.separator + "tmp.db";
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
     }
 
     private static BigDecimal parseDecimal(String s) {
@@ -153,6 +181,7 @@ public class JoinCommand implements Command {
         statement.execute("PRAGMA synchronous=OFF");
         statement.execute("PRAGMA journal_mode=WAL");
         statement.close();
+
         return connection;
     }
 
@@ -162,6 +191,7 @@ public class JoinCommand implements Command {
             marks[i] = "?";
         }
         String placeholder = String.join(",", marks);
+
         return placeholder;
     }
 
@@ -189,6 +219,7 @@ public class JoinCommand implements Command {
 
             fields.add(field);
         }
+
         return fields;
     }
 }
