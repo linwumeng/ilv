@@ -3,12 +3,10 @@ package com.vipxf.regulation.ilv.core.command;
 import com.vipxf.regulation.ilv.core.Context;
 import com.vipxf.regulation.ilv.core.StepConfig;
 import org.apache.logging.log4j.util.Strings;
-
 import java.io.*;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.*;
@@ -38,7 +36,7 @@ public class JoinCommand implements Command {
 
         String sourceKey = source.iterator().next().keySet().iterator().next() + ".target";
         File sourceFile = new File(context.resolveFile(sourceKey));
-        try(BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(config.getTarget(context), true)))) {
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(config.getTarget(context), true)))) {
             deleteIfExists(sourceFile);
 
             // Connect to the database
@@ -78,11 +76,12 @@ public class JoinCommand implements Command {
                 i++;
                 writer.append(String.join("|", rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(7), rs.getString(8), rs.getString(9)));
             }
+            rs.close();
+            connection.close();
             if (0 == i) {
                 deleteIfExists(sourceFile);
             }
-            rs.close();
-            connection.close();
+            System.out.println("unbalance: " + i);
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
@@ -93,15 +92,15 @@ public class JoinCommand implements Command {
 
     private boolean deleteIfExists(File sourceFile) {
         try {
-            return Files.deleteIfExists(Paths.get(new URI("file://" + getTempDbFile(sourceFile))));
-        } catch (IOException|URISyntaxException e) {
+            return Files.deleteIfExists(Paths.get(new URI("file:/" + getTempDbFile(sourceFile))));
+        } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
     }
 
     private String getTempDbFile(File sourceFile) {
         try {
-            return sourceFile.getParentFile().getCanonicalPath() + File.separator + "tmp.db";
+            return (sourceFile.getParentFile().getCanonicalPath() + File.separator + "tmp.db").replace('\\', '/');
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
@@ -142,26 +141,24 @@ public class JoinCommand implements Command {
         String placeholder = createPlaceholder(totalColumns);
         // Use a PreparedStatement for batch inserts
         PreparedStatement pstmt = connection.prepareStatement("INSERT INTO " + table + " VALUES (" + placeholder + ")");
-        for (int i = 0; i < 100000; i++) {
-            int k = i + 1;
-            reader.lines().map(line -> line.split("\\|")).forEach(line -> {
-                try {
-                    for (int j = 0; j < line.length; j++) {
-                        if (keys.contains(j + 1)) {
-                            pstmt.setString(j + 1, line[j]);
-                        } else {
-                            pstmt.setInt(j + 1, new BigDecimal(line[j]).multiply(new BigDecimal(100)).intValue());
-                        }
+        int[] count = new int[]{0};
+        reader.lines().map(line -> line.split("\\|")).forEach(line -> {
+            try {
+                for (int j = 0; j < line.length; j++) {
+                    if (keys.contains(j + 1)) {
+                        pstmt.setString(j + 1, line[j]);
+                    } else {
+                        pstmt.setInt(j + 1, new BigDecimal(line[j]).multiply(new BigDecimal(100)).intValue());
                     }
-                    pstmt.addBatch();
-                    if (k % 1000 == 0) {
-                        pstmt.executeBatch(); // Execute every 1000 items.
-                    }
-                } catch (SQLException e) {
-                    throw new RuntimeException(e);
                 }
-            });
-        }
+                pstmt.addBatch();
+                if (++count[0] % 10000 == 0) {
+                    pstmt.executeBatch(); // Execute every 1000 items.
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        });
         pstmt.executeBatch(); // insert remaining records
 
         // Commit the transaction

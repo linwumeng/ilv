@@ -1,66 +1,66 @@
 steps:
-#  - step: journal
-#    type: file
-#    source: $JJFSE
-#    target: $JJFSE
-#    config:
-#      prepare:
-#      - name: select
-#        columns:
-#          - 2
-#          - 9
-#          - 16
-#          - 21
-#      - name: map
-#        from: 4
-#        action: replace
-#        enum:
-#          - from: 0
-#            to: -1
-#          - from: 1
-#            to: 1
-#      - name: expression
-#        to: 3
-#        expression: "@3 * @4"
-#      - name: select
-#        columns:
-#          - 1
-#          - 2
-#          - 3
-#  - step: sum
-#    type: reduce
-#    source: $JJFSE
-#    target: $JJFSE
-#    config:
-#      groupBy:
-#        - 2
-#      sum:
-#        - 3
+  - step: journal
+    type: file
+    source: $JJFSE
+    target: $JJFSE
+    config:
+      prepare:
+      - name: select
+        columns:
+          - 2
+          - 9
+          - 16
+          - 21
+      - name: map
+        from: 4
+        action: replace
+        enum:
+          - from: 0
+            to: -1
+          - from: 1
+            to: 1
+      - name: expression
+        to: 3
+        expression: "@3 * @4"
+      - name: select
+        columns:
+          - 1
+          - 2
+          - 3
+  - step: sum
+    type: reduce
+    source: $JJFSE
+    target: $JJFSE
+    config:
+      groupBy:
+        - 2
+      sum:
+        - 3
 
-#  - step: cbf
-#    type: file
-#    source: $KHYE
-#    target: $KHYE
-#    config:
-#      prepare:
-#      - name: select
-#        columns:
-#          - 2
-#          - 9
-#          - 16
-#
-#  - step: lbf
-#    type: file
-#    source: $KHYE
-#    target: $KHYE
-#    config:
-#      prepare:
-#      - name: select
-#        columns:
-#          - 2
-#          - 9
-#          - 16
-#
+  - step: cbf
+    type: file
+    source: $KHYE
+    target: $KHYE
+    config:
+      prepare:
+      - name: select
+        columns:
+          - 2
+          - 9
+          - 16
+
+  - step: lbf
+    type: file
+    source: $KHYE
+    target: $KHYE
+    config:
+      prepare:
+      - name: select
+        columns:
+          - 2
+          - 9
+          - 16
+
   - step: join
     type: join
     target: $BALANCE
@@ -78,7 +78,7 @@ steps:
             - 3
             - 1
             - 2
-#
+
 #  - step: verify
 #    source: path/to/input.csv
 #    target: path/to/output.csv

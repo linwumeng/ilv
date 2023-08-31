@@ -20,7 +20,7 @@ public class StepConfig {
         return String.join(".", step, "source", StringUtils.startsWithIgnoreCase(source, "$")?source.substring(1):"_");
     }
     public String getTargetVarName() {
-        return String.join(".", step, "target", StringUtils.startsWithIgnoreCase(source, "$")?source.substring(1):"_");
+        return String.join(".", step, "target", StringUtils.startsWithIgnoreCase(target, "$")?target.substring(1):"_");
     }
 
     public String getSource(Context context) {
